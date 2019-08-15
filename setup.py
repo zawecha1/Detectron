@@ -33,9 +33,7 @@ ext_modules = [
         sources=[
             'detectron/utils/cython_bbox.pyx'
         ],
-        extra_compile_args=[
-            '-Wno-cpp'
-        ],
+        #extra_compile_args=['-Wno-cpp'],
         include_dirs=[
             _NP_INCLUDE_DIRS
         ]
@@ -45,9 +43,7 @@ ext_modules = [
         sources=[
             'detectron/utils/cython_nms.pyx'
         ],
-        extra_compile_args=[
-            '-Wno-cpp'
-        ],
+        #extra_compile_args=['-Wno-cpp'],
         include_dirs=[
             _NP_INCLUDE_DIRS
         ]

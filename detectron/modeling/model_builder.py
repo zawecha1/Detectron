@@ -129,7 +129,7 @@ def get_func(func_name):
     function in this module or the path to a function relative to the base
     'modeling' module.
     """
-    if func_name == '':
+    if func_name == '' or len(func_name) == 0:
         return None
     new_func_name = name_compat.get_new_name(func_name)
     if new_func_name != func_name:

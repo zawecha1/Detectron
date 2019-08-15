@@ -20,67 +20,24 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import errno
+import pickle
 import hashlib
 import logging
 import os
 import re
-import six
 import sys
-from six.moves import cPickle as pickle
-from six.moves import urllib
-from uuid import uuid4
+import urllib.request as urllib2
 
 logger = logging.getLogger(__name__)
 
-_DETECTRON_S3_BASE_URL = 'https://dl.fbaipublicfiles.com/detectron'
+_DETECTRON_S3_BASE_URL = 'https://s3-us-west-2.amazonaws.com/detectron'
 
 
-def save_object(obj, file_name, pickle_format=2):
-    """Save a Python object by pickling it.
-
-Unless specifically overridden, we want to save it in Pickle format=2 since this
-will allow other Python2 executables to load the resulting Pickle. When we want
-to completely remove Python2 backward-compatibility, we can bump it up to 3. We
-should never use pickle.HIGHEST_PROTOCOL as far as possible if the resulting
-file is manifested or used, external to the system.
-    """
+def save_object(obj, file_name):
+    """Save a Python object by pickling it."""
     file_name = os.path.abspath(file_name)
-    # Avoid filesystem race conditions (particularly on network filesystems)
-    # by saving to a random tmp file on the same filesystem, and then
-    # atomically rename to the target filename.
-    tmp_file_name = file_name + ".tmp." + uuid4().hex
-    try:
-        with open(tmp_file_name, 'wb') as f:
-            pickle.dump(obj, f, pickle_format)
-            f.flush()  # make sure it's written to disk
-            os.fsync(f.fileno())
-        os.rename(tmp_file_name, file_name)
-    finally:
-        # Clean up the temp file on failure. Rather than using os.path.exists(),
-        # which can be unreliable on network filesystems, attempt to delete and
-        # ignore os errors.
-        try:
-            os.remove(tmp_file_name)
-        except EnvironmentError as e:  # parent class of IOError, OSError
-            if getattr(e, 'errno', None) != errno.ENOENT:  # We expect ENOENT
-                logger.info("Could not delete temp file %r",
-                    tmp_file_name, exc_info=True)
-                # pass through since we don't want the job to crash
-
-
-def load_object(file_name):
-    with open(file_name, 'rb') as f:
-        # The default encoding used while unpickling is 7-bit (ASCII.) However,
-        # the blobs are arbitrary 8-bit bytes which don't agree. The absolute
-        # correct way to do this is to use `encoding="bytes"` and then interpret
-        # the blob names either as ASCII, or better, as unicode utf-8. A
-        # reasonable fix, however, is to treat it the encoding as 8-bit latin1
-        # (which agrees with the first 256 characters of Unicode anyway.)
-        if six.PY2:
-            return pickle.load(f)
-        else:
-            return pickle.load(f, encoding='latin1')
+    with open(file_name, 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
 def cache_url(url_or_file, cache_dir):
@@ -88,9 +45,7 @@ def cache_url(url_or_file, cache_dir):
     path to the cached file. If the argument is not a URL, simply return it as
     is.
     """
-    is_url = re.match(
-        r'^(?:http)s?://', url_or_file, re.IGNORECASE
-    ) is not None
+    is_url = re.match(r'^(?:http)s?://', url_or_file, re.IGNORECASE) is not None
 
     if not is_url:
         return url_or_file
@@ -156,11 +111,8 @@ def download_url(
     Credit:
     https://stackoverflow.com/questions/2028517/python-urllib2-progress-hook
     """
-    response = urllib.request.urlopen(url)
-    if six.PY2:
-        total_size = response.info().getheader('Content-Length').strip()
-    else:
-        total_size = response.info().get('Content-Length').strip()
+    response = urllib2.urlopen(url)
+    total_size = response.info().getheader('Content-Length').strip()
     total_size = int(total_size)
     bytes_so_far = 0
 
@@ -180,13 +132,13 @@ def download_url(
 def _get_file_md5sum(file_name):
     """Compute the md5 hash of a file."""
     hash_obj = hashlib.md5()
-    with open(file_name, 'rb') as f:
+    with open(file_name, 'r') as f:
         hash_obj.update(f.read())
-    return hash_obj.hexdigest().encode('utf-8')
+    return hash_obj.hexdigest()
 
 
 def _get_reference_md5sum(url):
     """By convention the md5 hash for url is stored in url + '.md5sum'."""
     url_md5sum = url + '.md5sum'
-    md5sum = urllib.request.urlopen(url_md5sum).read().strip()
+    md5sum = urllib2.urlopen(url_md5sum).read().strip()
     return md5sum

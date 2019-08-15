@@ -107,14 +107,14 @@ def NamedCudaScope(gpu_id):
     """Creates a GPU name scope and CUDA device scope. This function is provided
     to reduce `with ...` nesting levels."""
     with GpuNameScope(gpu_id):
-        with CudaScope(gpu_id):
+        with CpuScope():#CudaScope(gpu_id):
             yield
 
 
 @contextlib.contextmanager
 def GpuNameScope(gpu_id):
     """Create a name scope for GPU device `gpu_id`."""
-    with core.NameScope('gpu_{:d}'.format(gpu_id)):
+    with core.NameScope('cpu_{:d}'.format(gpu_id)):
         yield
 
 
@@ -129,7 +129,7 @@ def CudaScope(gpu_id):
 @contextlib.contextmanager
 def CpuScope():
     """Create a CPU device scope."""
-    cpu_dev = core.DeviceOption(caffe2_pb2.CPU)
+    cpu_dev = core.DeviceOption(caffe2_pb2.CPU,0)
     with core.DeviceScope(cpu_dev):
         yield
 
@@ -160,7 +160,6 @@ def get_nvidia_info():
 def get_nvidia_smi_output():
     try:
         info = subprocess.check_output(["nvidia-smi"], stderr=subprocess.STDOUT)
-        info = info.decode("utf8")
     except Exception as e:
         info = "Executing nvidia-smi failed: " + str(e)
     return info.strip()

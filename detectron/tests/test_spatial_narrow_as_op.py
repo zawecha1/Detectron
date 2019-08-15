@@ -32,7 +32,7 @@ import detectron.utils.logging as logging_utils
 
 class SpatialNarrowAsOpTest(unittest.TestCase):
     def _run_test(self, A, B, check_grad=False):
-        with core.DeviceScope(core.DeviceOption(caffe2_pb2.CUDA, 0)):
+        with core.DeviceScope(core.DeviceOption(caffe2_pb2.CPU, 0)):
             op = core.CreateOperator('SpatialNarrowAs', ['A', 'B'], ['C'])
             workspace.FeedBlob('A', A)
             workspace.FeedBlob('B', B)
@@ -43,7 +43,7 @@ class SpatialNarrowAsOpTest(unittest.TestCase):
             gc = gradient_checker.GradientChecker(
                 stepsize=0.005,
                 threshold=0.005,
-                device_option=core.DeviceOption(caffe2_pb2.CUDA, 0)
+                device_option=core.DeviceOption(caffe2_pb2.CPU, 0)
             )
 
             res, grad, grad_estimated = gc.CheckSimple(op, [A, B], 0, [0])
